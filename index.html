@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Monte Carlo Decay Simulator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+  </head>
+  <body>
+    <div class="page">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-title">Monte Carlo Decay</div>
+          <div class="brand-subtitle">A to B to Stable</div>
+        </div>
+
+        <div class="control">
+          <label for="nA">Initial A (N_A0)</label>
+          <input id="nA" type="range" min="1000" max="200000" step="1000" value="50000" />
+          <div class="value" id="nAValue">50,000</div>
+        </div>
+
+        <div class="control">
+          <label for="nB">Initial B (N_B0)</label>
+          <input id="nB" type="range" min="0" max="50000" step="500" value="0" />
+          <div class="value" id="nBValue">0</div>
+        </div>
+
+        <div class="control">
+          <label for="lambdaA">Decay constant A (lambda_A)</label>
+          <input id="lambdaA" type="range" min="0.01" max="1.5" step="0.01" value="0.5" />
+          <div class="value" id="lambdaAValue">0.50</div>
+        </div>
+
+        <div class="control">
+          <label for="lambdaB">Decay constant B (lambda_B)</label>
+          <input id="lambdaB" type="range" min="0.01" max="1.5" step="0.01" value="0.2" />
+          <div class="value" id="lambdaBValue">0.20</div>
+        </div>
+
+        <div class="control">
+          <label for="steps">Total steps (n_steps)</label>
+          <input id="steps" type="range" min="50" max="500" step="10" value="200" />
+          <div class="value" id="stepsValue">200</div>
+        </div>
+
+        <div class="control toggle">
+          <label for="showBateman">Overlay Bateman curves</label>
+          <input id="showBateman" type="checkbox" checked />
+        </div>
+
+        <button id="downloadCsv" class="primary">Download Simulation Data as .CSV</button>
+        <div class="hint">Charts update automatically as you move sliders.</div>
+      </aside>
+
+      <main class="content">
+        <div class="header">
+          <h1>Decay Chain Explorer</h1>
+          <p>
+            Compare Monte Carlo trajectories against Bateman equation solutions.
+           
+          </p>
+        </div>
+
+        <div class="card">
+          <div id="plot" class="plot"></div>
+        </div>
+
+        <div class="stats" id="stats"></div>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

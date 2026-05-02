@@ -161,6 +161,9 @@ class RadioactiveDecayChain:
     def plot(
         times: np.ndarray,
         populations: tuple[np.ndarray, np.ndarray, np.ndarray],
+        bateman_populations: Optional[
+            tuple[np.ndarray, np.ndarray, np.ndarray]
+        ] = None,
         title: str = "Monte Carlo Radioactive Decay Chain  (A → B → C → Stable)",
         save_path: Optional[str] = "decay_chain.png",
     ) -> plt.Figure:
@@ -172,6 +175,9 @@ class RadioactiveDecayChain:
             Time axis returned by :meth:`simulate`.
         populations : tuple
             ``(pop_A, pop_B, pop_C)`` returned by :meth:`simulate`.
+        bateman_populations : tuple or None
+            ``(N_A, N_B, N_C)`` from Bateman equations. When provided, these
+            deterministic curves are overlaid with dashed lines.
         title : str
             Figure title.
         save_path : str or None
@@ -186,6 +192,11 @@ class RadioactiveDecayChain:
         ax.plot(times, pop_A, lw=2, label="A (parent)")
         ax.plot(times, pop_B, lw=2, label="B (intermediate 1)")
         ax.plot(times, pop_C, lw=2, label="C (intermediate 2)")
+        if bateman_populations is not None:
+            bat_A, bat_B, bat_C = bateman_populations
+            ax.plot(times, bat_A, "k--", lw=1.8, label="A Bateman")
+            ax.plot(times, bat_B, "k--", lw=1.8, label="B Bateman")
+            ax.plot(times, bat_C, "k--", lw=1.8, label="C Bateman")
         ax.set_xlabel("Time (s)", fontsize=12)
         ax.set_ylabel("Population (nuclei)", fontsize=12)
         ax.set_title(title, fontsize=13)
@@ -195,6 +206,52 @@ class RadioactiveDecayChain:
         if save_path:
             fig.savefig(save_path, dpi=150)
         return fig
+
+    # ------------------------------------------------------------------
+    @staticmethod
+    def bateman_populations(
+        times: np.ndarray,
+        N_A0: int,
+        N_B0: int,
+        N_C0: int,
+        lambda_A: float,
+        lambda_B: float,
+        lambda_C: float,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Compute Bateman equation solutions for A → B → C → Stable.
+
+        Assumes distinct decay constants (lambda_A, lambda_B, lambda_C).
+        """
+        t = times.astype(np.float64)
+        la = float(lambda_A)
+        lb = float(lambda_B)
+        lc = float(lambda_C)
+
+        if la == lb or la == lc or lb == lc:
+            raise ValueError("Bateman solution requires distinct decay constants.")
+
+        exp_a = np.exp(-la * t)
+        exp_b = np.exp(-lb * t)
+        exp_c = np.exp(-lc * t)
+
+        N_A = N_A0 * exp_a
+        N_B = N_B0 * exp_b + (la * N_A0 / (lb - la)) * (exp_a - exp_b)
+
+        term_from_A = (
+            la
+            * lb
+            * N_A0
+            * (
+                exp_a / ((lb - la) * (lc - la))
+                + exp_b / ((la - lb) * (lc - lb))
+                + exp_c / ((la - lc) * (lb - lc))
+            )
+        )
+        term_from_B = (lb * N_B0 / (lc - lb)) * (exp_b - exp_c)
+        term_from_C = N_C0 * exp_c
+        N_C = term_from_C + term_from_B + term_from_A
+
+        return N_A, N_B, N_C
 
     # ------------------------------------------------------------------
     @staticmethod
@@ -282,8 +339,19 @@ if __name__ == "__main__":
     elapsed = time.perf_counter() - t0
     print(f"Simulation complete in {elapsed:.2f} s")
 
-    # ── Plot population curves ─────────────────────────────────────────
-    fig = RadioactiveDecayChain.plot(times, populations, save_path="decay_chain.png")
+    # ── Plot population curves with Bateman overlay ────────────────────
+    bateman = RadioactiveDecayChain.bateman_populations(
+        times,
+        N_A0=sim.N_A0,
+        N_B0=sim.N_B0,
+        N_C0=sim.N_C0,
+        lambda_A=sim.lambda_A,
+        lambda_B=sim.lambda_B,
+        lambda_C=sim.lambda_C,
+    )
+    fig = RadioactiveDecayChain.plot(
+        times, populations, bateman_populations=bateman, save_path="decay_chain.png"
+    )
     plt.close(fig)
     print("Population plot  →  decay_chain.png")
 
