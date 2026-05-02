@@ -114,11 +114,11 @@ class RadioactiveDecayChain:
         N_total = self.N_A0 + self.N_B0 + self.N_C0
         n_steps = int(t_max / dt)
 
-        # Exact per-step decay probabilities
+        # Exact per-step decay probabilities (use active backend for consistency)
         decay_probs = [
-            1.0 - float(np.exp(-self.lambda_A * dt)),
-            1.0 - float(np.exp(-self.lambda_B * dt)),
-            1.0 - float(np.exp(-self.lambda_C * dt)),
+            float(1.0 - xp.exp(-self.lambda_A * dt)),
+            float(1.0 - xp.exp(-self.lambda_B * dt)),
+            float(1.0 - xp.exp(-self.lambda_C * dt)),
         ]
 
         # Build state array: 0=A, 1=B, 2=C, 3=stable
@@ -134,10 +134,15 @@ class RadioactiveDecayChain:
         pop_C = np.empty(n_steps + 1, dtype=np.int64)
         pop_A[0], pop_B[0], pop_C[0] = self.N_A0, self.N_B0, self.N_C0
 
+        # Pre-allocate a reusable random buffer to avoid per-step allocation overhead;
+        # use the Generator API (numpy >= 1.17 / cupy) which supports in-place fills.
+        rng = xp.random.default_rng()
+        rand = xp.empty(N_total, dtype=xp.float64)
+
         # ── Time integration ─────────────────────────────────────────
         for step in range(n_steps):
-            # One vectorised random draw shared across all isotopes
-            rand = xp.random.random(N_total)
+            # One vectorised in-place random draw shared across all isotopes
+            rng.random(out=rand)
 
             # Advance each active isotope: mutually exclusive Boolean masks
             for state_idx, prob in enumerate(decay_probs):
@@ -202,7 +207,7 @@ class RadioactiveDecayChain:
         dt: float = 0.1,
         use_gpu: Optional[bool] = None,
         save_path: Optional[str] = "benchmark.png",
-    ) -> dict:
+    ) -> dict[int, float]:
         """Benchmark simulation wall-clock time for several particle counts.
 
         Parameters
@@ -220,10 +225,10 @@ class RadioactiveDecayChain:
 
         Returns
         -------
-        timings : dict
+        timings : dict[int, float]
             Mapping ``{N: elapsed_seconds}``.
         """
-        timings: dict = {}
+        timings: dict[int, float] = {}
         print(f"{'N':>12}  {'Time (s)':>10}")
         print("-" * 26)
         for N in N_values:
